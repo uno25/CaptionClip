@@ -1,15 +1,18 @@
 # CLAUDE.md
 
-This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
+This file provides guidance to Claude Code (claude.ai/code) when working with this repository.
 
 ## Project Overview
 
-CaptionClip is a cross-browser extension that extracts transcripts from YouTube videos. It supports both Chrome (Manifest V3) and Firefox (Manifest V2) with a single codebase.
+CaptionClip is a cross-browser extension that extracts transcripts from YouTube videos and saves them as TXT or SRT. It supports Chrome with Manifest V3 and Firefox with Manifest V2 from a single vanilla JavaScript content script.
 
 ## Key Commands
 
-```bash
-# Build for both browsers (creates dist/chrome and dist/firefox)
+~~~bash
+# Install dependencies
+npm install
+
+# Build for both browsers, creating dist/chrome, dist/firefox, and zip files
 npm run build
 
 # Run tests for both browsers
@@ -20,53 +23,59 @@ npm run test:chrome
 
 # Run Firefox-specific tests
 npm run test:firefox
-```
+~~~
+
+Playwright tests require installed browser binaries. If tests fail because Chromium or Firefox is missing, run npx playwright install.
 
 ## Architecture
 
-The extension uses a simple, dependency-free architecture:
+The extension uses a simple dependency-free architecture:
 
-- **Single content script** (`src/content.js`) that injects a "Transcript" button into YouTube's interface
-- **No background scripts or service workers** - all functionality is contained in the content script
-- **Pure vanilla JavaScript** - no frameworks or external dependencies
-- **Cross-browser compatibility** through separate manifest files in `src/manifests/`
+- **Single content script**: src/content.js injects the YouTube UI, stores settings, extracts transcripts, saves files, and copies content to the clipboard.
+- **No background scripts or service workers**: all runtime behavior lives in the content script.
+- **Pure vanilla JavaScript**: no bundler or framework is used.
+- **Browser-specific manifests**: src/manifests/manifest.chrome.json and src/manifests/manifest.firefox.json are copied into dist/ by the build script.
 
-### Core Components
+## Core Behavior
 
-1. **src/content.js**: Main extension logic
-   - Injects "Transcript" button next to YouTube's voice search button
-   - Detects YouTube's theme (light/dark) for proper styling
-   - Extracts transcript using YouTube's built-in transcript panel
-   - Handles clipboard operations and user feedback via toast notifications
+- Injects a **Transcript** button beside YouTube top-bar controls on youtube.com/watch pages.
+- Injects a settings gear beside the Transcript button.
+- Settings store captionclip-format in page local storage. Valid values are txt and srt; default is txt.
+- TXT export saves transcript text without timings.
+- SRT export extracts segment start times and text, then infers each cue end time from the next segment start time.
+- File downloads use a generated anchor download link and a Blob URL.
+- Clipboard copy is best effort and should not be treated as the primary save path.
 
-2. **scripts/build.js**: Build system
-   - Creates browser-specific distributions in `dist/` directory
-   - Copies appropriate manifest for each browser
-   - Generates ZIP files for distribution
+## Important Files
 
-3. **tests/**: Playwright integration tests
-   - Validates button injection and visibility
-   - Tests both Chrome and Firefox extensions
-   - Uses real YouTube videos for testing
+- src/content.js: main extension logic and YouTube transcript extraction.
+- src/manifests/: browser-specific extension manifests.
+- scripts/build.js: copies source into dist/ and creates zip files.
+- tests/: Playwright integration tests that load built extension files.
+- docs/CHANGELOG.md: release notes; update it for user-visible changes.
+- dist/: generated extension folders and zip files. This repo currently tracks built artifacts, so rebuild before committing release changes.
 
 ## Development Workflow
 
-1. Make changes to source files in `src/`
-2. Run `npm run build` to update distributions
-3. Test changes with `npm test`
-4. Reload extension in browser for manual testing
+1. Make source changes in src/.
+2. Update tests and docs when behavior changes.
+3. Run syntax checks when relevant:
 
-## Important Considerations
+~~~bash
+node --check src/content.js
+node --check test-extension-complete.js
+node --check test-extension-manual.js
+~~~
 
-- **YouTube DOM dependency**: The extension relies on YouTube's DOM structure and class names. Changes to YouTube's interface may require selector updates.
-- **Theme detection**: Uses multiple fallback methods to detect YouTube's current theme (dark/light)
-- **Transcript extraction method**: Uses the most reliable method (`tryOpenViaShowTranscriptButton()`) which has a 100% success rate based on testing
-- **No bundling needed**: The extension uses pure JavaScript and doesn't require compilation or bundling
+4. Run npm run build to refresh dist/.
+5. Run node --check dist/chrome/content.js and node --check dist/firefox/content.js after build.
+6. Run Playwright tests when browser binaries are available.
+7. Reload the unpacked browser extension and refresh YouTube tabs for manual verification.
 
-## Testing Approach
+## Constraints And Cautions
 
-Tests use Playwright to:
-- Load the extension in headless browsers
-- Navigate to YouTube videos
-- Verify button injection and styling
-- Run separate test suites for Chrome and Firefox compatibility
+- YouTube DOM selectors are fragile. Preserve fallback extraction paths when changing transcript logic.
+- Keep DOM creation Trusted Types-safe: use document.createElement, textContent, attributes, and styles instead of innerHTML.
+- Do not reintroduce custom prepend behavior; settings are for output format only.
+- Keep Chrome and Firefox builds in sync by editing src/ and rebuilding, not by editing only dist/.
+- The toolbar icon may be gray because the extension has no toolbar popup or action UI; the in-page Transcript button is the primary interface.
