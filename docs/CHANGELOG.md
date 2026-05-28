@@ -1,5 +1,15 @@
 # Changelog
 
+## [1.8.0] - 2026-05-28
+
+### Added
+- Saved extracted YouTube transcripts as text downloads while keeping clipboard copy as a best-effort fallback.
+
+### Fixed
+- Updated transcript readiness detection for YouTube modern transcript panels.
+- Extracted transcript text from visible segment text (innerText) and added fallbacks for pages with multiple transcript containers.
+- Improved error messages when transcript panels are present but text extraction fails.
+
 ## [1.7.0] - 2026-05-25
 
 ### Fixed
