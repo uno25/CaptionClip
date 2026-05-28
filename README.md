@@ -49,7 +49,7 @@ npm run build
 2. Optional: click the settings gear beside **Transcript** and choose:
    - **TXT**: plain transcript text without timings.
    - **SRT**: subtitle file with timings.
-3. Click **Transcript**.
+3. Click **Transcript** near YouTube search field.
 4. CaptionClip opens YouTube's transcript panel when needed, extracts the transcript, downloads the selected file type, and attempts to copy the same content to the clipboard.
 
 The browser toolbar icon can appear gray because CaptionClip does not use a toolbar popup. The extension runs as a content script on YouTube watch pages.
