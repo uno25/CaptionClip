@@ -146,7 +146,7 @@
         const settingsButton = document.createElement('button');
         settingsButton.id = 'captionclip-settings-button';
         settingsButton.setAttribute('aria-label', 'CaptionClip settings');
-        settingsButton.setAttribute('title', 'Configure custom prepend text');
+        settingsButton.setAttribute('title', 'Choose transcript save format');
         settingsButton.style.cssText = `
           display: inline-flex !important;
           align-items: center !important;
@@ -187,76 +187,35 @@
           padding: 12px !important;
           box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
           z-index: 9999 !important;
-          min-width: 280px !important;
+          min-width: 220px !important;
           display: none !important;
           font-family: Roboto, Arial, sans-serif !important;
+          color: ${isDarkTheme ? '#e0e0e0' : '#303030'} !important;
         `;
         
-        const settingsLabel = document.createElement('label');
-        settingsLabel.textContent = 'Custom prepend text:';
+        const settingsLabel = document.createElement('div');
+        settingsLabel.textContent = 'Save as:';
         settingsLabel.style.cssText = `
           display: block !important;
-          margin-bottom: 6px !important;
-          font-size: 12px !important;
-          font-weight: 500 !important;
-          color: ${isDarkTheme ? '#e0e0e0' : '#303030'} !important;
-        `;
-        
-        const settingsInput = document.createElement('input');
-        settingsInput.type = 'text';
-        settingsInput.placeholder = 'e.g., "Summarize this:", "Key points:"';
-        settingsInput.value = localStorage.getItem('captionclip-prepend') || '';
-        settingsInput.style.cssText = `
-          width: 100% !important;
-          padding: 8px !important;
-          border: 1px solid ${isDarkTheme ? '#404040' : '#d0d0d0'} !important;
-          border-radius: 4px !important;
-          background: ${isDarkTheme ? '#303030' : '#ffffff'} !important;
-          color: ${isDarkTheme ? '#e0e0e0' : '#303030'} !important;
-          font-size: 13px !important;
-          font-family: inherit !important;
-          box-sizing: border-box !important;
           margin-bottom: 8px !important;
-        `;
-        
-        const buttonRow = document.createElement('div');
-        buttonRow.style.cssText = `
-          display: flex !important;
-          gap: 8px !important;
-          justify-content: flex-end !important;
-        `;
-        
-        const saveButton = document.createElement('button');
-        saveButton.textContent = 'Save';
-        saveButton.style.cssText = `
-          padding: 6px 12px !important;
-          background: #1976d2 !important;
-          color: white !important;
-          border: none !important;
-          border-radius: 4px !important;
           font-size: 12px !important;
           font-weight: 500 !important;
-          cursor: pointer !important;
-        `;
-        
-        const clearButton = document.createElement('button');
-        clearButton.textContent = 'Clear';
-        clearButton.style.cssText = `
-          padding: 6px 12px !important;
-          background: ${isDarkTheme ? '#404040' : '#f0f0f0'} !important;
           color: ${isDarkTheme ? '#e0e0e0' : '#303030'} !important;
-          border: none !important;
-          border-radius: 4px !important;
-          font-size: 12px !important;
-          font-weight: 500 !important;
-          cursor: pointer !important;
         `;
-        
-        buttonRow.appendChild(clearButton);
-        buttonRow.appendChild(saveButton);
+
+        const formatOptions = document.createElement('div');
+        formatOptions.style.cssText = `
+          display: grid !important;
+          gap: 8px !important;
+        `;
+
+        const txtOption = createFormatOption('txt', 'TXT', 'Plain text without timings', isDarkTheme);
+        const srtOption = createFormatOption('srt', 'SRT', 'Subtitles with timings', isDarkTheme);
+
+        formatOptions.appendChild(txtOption.label);
+        formatOptions.appendChild(srtOption.label);
         settingsPanel.appendChild(settingsLabel);
-        settingsPanel.appendChild(settingsInput);
-        settingsPanel.appendChild(buttonRow);
+        settingsPanel.appendChild(formatOptions);
         
         // Settings button click handler
         settingsButton.addEventListener('click', (e) => {
@@ -264,24 +223,18 @@
           const isVisible = settingsPanel.style.display !== 'none';
           settingsPanel.style.display = isVisible ? 'none' : 'block';
           if (!isVisible) {
-            settingsInput.focus();
+            syncFormatOptions();
           }
         });
-        
-        // Save button handler
-        saveButton.addEventListener('click', () => {
-          const value = settingsInput.value.trim();
-          localStorage.setItem('captionclip-prepend', value);
-          settingsPanel.style.display = 'none';
-          updateButtonText();
-        });
-        
-        // Clear button handler
-        clearButton.addEventListener('click', () => {
-          settingsInput.value = '';
-          localStorage.removeItem('captionclip-prepend');
-          settingsPanel.style.display = 'none';
-          updateButtonText();
+
+        [txtOption.input, srtOption.input].forEach(input => {
+          input.addEventListener('change', () => {
+            if (input.checked) {
+              localStorage.setItem('captionclip-format', input.value);
+              updateButtonText();
+              settingsPanel.style.display = 'none';
+            }
+          });
         });
         
         // Close panel when clicking outside
@@ -291,19 +244,20 @@
           }
         });
         
-        // Function to update button text based on custom prepend
+        function syncFormatOptions() {
+          const format = getSelectedFormat();
+          txtOption.input.checked = format === 'txt';
+          srtOption.input.checked = format === 'srt';
+        }
+
         function updateButtonText() {
-          const customPrepend = localStorage.getItem('captionclip-prepend');
-          if (customPrepend && customPrepend.trim()) {
-            textSpan.textContent = 'Custom';
-            captionClipButton.setAttribute('title', `Extract transcript with custom prepend: "${customPrepend}"`);
-          } else {
-            textSpan.textContent = 'Transcript';
-            captionClipButton.setAttribute('title', 'Extract transcript with CaptionClip');
-          }
+          const format = getSelectedFormat().toUpperCase();
+          textSpan.textContent = 'Transcript';
+          captionClipButton.setAttribute('title', `Extract transcript and save as ${format}`);
         }
         
         // Initialize button text
+        syncFormatOptions();
         updateButtonText();
         
         captionClipButton.addEventListener('click', async () => {
@@ -312,15 +266,11 @@
           textSpan.textContent = 'Extracting...';
           
           try {
-            const transcript = await openAndExtractTranscript();
-            const customPrepend = localStorage.getItem('captionclip-prepend');
-            const finalTranscript = customPrepend && customPrepend.trim() 
-              ? `${customPrepend.trim()} ${transcript}`
-              : transcript;
+            const transcript = await openAndExtractTranscript(getSelectedFormat());
             
-            saveTranscriptToFile(finalTranscript);
+            saveTranscriptToFile(transcript.content, transcript.extension);
             try {
-              await copyToClipboard(finalTranscript);
+              await copyToClipboard(transcript.content);
             } catch (copyError) {
               showToast('Transcript saved. Clipboard copy failed.');
             }
@@ -409,6 +359,47 @@
     return svg;
   }
 
+  function createFormatOption(value, title, description, isDarkTheme) {
+    const label = document.createElement('label');
+    label.style.cssText = `
+      display: grid !important;
+      grid-template-columns: auto 1fr !important;
+      column-gap: 8px !important;
+      align-items: start !important;
+      padding: 8px !important;
+      border: 1px solid ${isDarkTheme ? '#404040' : '#d8d8d8'} !important;
+      border-radius: 6px !important;
+      cursor: pointer !important;
+      color: ${isDarkTheme ? '#e0e0e0' : '#303030'} !important;
+    `;
+
+    const input = document.createElement('input');
+    input.type = 'radio';
+    input.name = 'captionclip-format';
+    input.value = value;
+    input.style.cssText = 'margin: 2px 0 0 0 !important;';
+
+    const text = document.createElement('span');
+    const titleElement = document.createElement('strong');
+    titleElement.textContent = title;
+    titleElement.style.cssText = 'display: block !important; font-size: 13px !important; line-height: 16px !important;';
+
+    const descriptionElement = document.createElement('span');
+    descriptionElement.textContent = description;
+    descriptionElement.style.cssText = 'display: block !important; font-size: 12px !important; line-height: 16px !important; opacity: 0.78 !important;';
+
+    text.appendChild(titleElement);
+    text.appendChild(descriptionElement);
+    label.appendChild(input);
+    label.appendChild(text);
+
+    return { label, input };
+  }
+
+  function getSelectedFormat() {
+    return localStorage.getItem('captionclip-format') === 'srt' ? 'srt' : 'txt';
+  }
+
   async function copyToClipboard(text) {
     try {
       if (navigator.clipboard && navigator.clipboard.writeText) {
@@ -456,13 +447,13 @@
     }
   }
 
-  function saveTranscriptToFile(text) {
+  function saveTranscriptToFile(text, extension = 'txt') {
     const blob = new Blob([text], { type: 'text/plain;charset=utf-8' });
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
 
     link.href = url;
-    link.download = getTranscriptFilenameBase() + '.txt';
+    link.download = getTranscriptFilenameBase() + '.' + extension;
     link.style.display = 'none';
 
     document.body.appendChild(link);
@@ -544,7 +535,7 @@
     }
   }).observe(document, { subtree: true, childList: true });
 
-async function openAndExtractTranscript() {
+async function openAndExtractTranscript(format = 'txt') {
   if (!window.location.href.includes("youtube.com/watch")) {
     throw new Error("Not a YouTube video page");
   }
@@ -558,12 +549,25 @@ async function openAndExtractTranscript() {
       throw new Error("Transcript panel not found or did not render text. Open the transcript panel and try again.");
     });
 
+  const segments = extractTranscriptSegments();
+  if (segments.length > 0) {
+    if (format === 'srt') {
+      const srt = buildSrtTranscript(segments);
+      if (!srt) {
+        throw new Error('Transcript timings could not be extracted for SRT output.');
+      }
+      return { content: srt, extension: 'srt' };
+    }
+
+    return { content: segments.map(segment => segment.text).join(' '), extension: 'txt' };
+  }
+
   const transcript = extractYouTubeTranscript();
   if (!transcript) {
     throw new Error("Transcript panel was found, but no transcript text could be extracted.");
   }
 
-  return transcript;
+  return { content: transcript, extension: 'txt' };
 }
 
 async function tryOpenTranscriptPanel() {
@@ -655,23 +659,36 @@ function extractYouTubeTranscript() {
 }
 
 function extractModernYouTubeTranscript() {
-  const panel = findTranscriptPanel();
-
-  if (panel) {
-    const panelTranscript = extractTranscriptFromSegments(panel.querySelectorAll(getTranscriptSegmentSelectors().join(", "))) ||
-                            extractTranscriptFromPanelText(panel);
-    if (panelTranscript) {
-      return panelTranscript;
-    }
-  }
-
-  return extractTranscriptFromSegments(document.querySelectorAll(getTranscriptSegmentSelectors().join(", ")));
+  return extractTranscriptSegments()
+    .map(segment => segment.text)
+    .join(' ');
 }
 
-function extractTranscriptFromSegments(segmentHosts) {
-  const transcriptParts = [];
+function extractTranscriptSegments() {
+  const panel = findTranscriptPanel();
+  const panelSegments = panel
+    ? extractSegmentsFromHosts(panel.querySelectorAll(getTranscriptSegmentSelectors().join(", ")))
+    : [];
+
+  if (panelSegments.length > 0) {
+    return panelSegments;
+  }
+
+  const pageSegments = extractSegmentsFromHosts(document.querySelectorAll(getTranscriptSegmentSelectors().join(", ")));
+  if (pageSegments.length > 0) {
+    return pageSegments;
+  }
+
+  return panel ? extractSegmentsFromPanelText(panel) : [];
+}
+
+function extractSegmentsFromHosts(segmentHosts) {
+  const seen = new Set();
+  const segments = [];
 
   Array.from(segmentHosts).forEach(segment => {
+    const visibleText = getVisibleText(segment);
+    const start = parseTranscriptTimestamp(getFirstTimestampLine(visibleText));
     const explicitTextNodes = Array.from(segment.querySelectorAll("[role=\"text\"], .ytAttributedStringHost, yt-formatted-string, .segment-text"))
       .filter(node => !isTranscriptTimestampText(getVisibleText(node)));
 
@@ -682,21 +699,35 @@ function extractTranscriptFromSegments(segmentHosts) {
       .join(" ")
       .trim();
 
-    if (text && !isTranscriptChromeText(text)) {
-      transcriptParts.push(text);
+    if (!text || isTranscriptChromeText(text)) {
+      return;
     }
+
+    const key = String(start ?? 'none') + '|' + text;
+    if (seen.has(key)) {
+      return;
+    }
+
+    seen.add(key);
+    segments.push({ start, text });
   });
 
-  return transcriptParts.join(" ");
+  return segments;
 }
 
 function extractTranscriptFromPanelText(panel) {
+  return extractSegmentsFromPanelText(panel)
+    .map(segment => segment.text)
+    .join(" ");
+}
+
+function extractSegmentsFromPanelText(panel) {
   const lines = (panel.innerText || "")
     .split("\n")
     .map(line => line.trim())
     .filter(Boolean);
 
-  const transcriptParts = [];
+  const segments = [];
 
   for (let index = 0; index < lines.length; index += 1) {
     if (!isTranscriptTimestampText(lines[index])) {
@@ -715,11 +746,32 @@ function extractTranscriptFromPanelText(panel) {
     }
 
     if (nextLines.length > 0) {
-      transcriptParts.push(nextLines.join(" "));
+      segments.push({
+        start: parseTranscriptTimestamp(lines[index]),
+        text: nextLines.join(" ")
+      });
     }
   }
 
-  return transcriptParts.join(" ");
+  return segments;
+}
+
+function buildSrtTranscript(segments) {
+  return segments
+    .filter(segment => typeof segment.start === 'number')
+    .map((segment, index, timedSegments) => {
+      const nextSegment = timedSegments[index + 1];
+      const end = nextSegment && nextSegment.start > segment.start
+        ? nextSegment.start
+        : segment.start + 3;
+
+      return [
+        String(index + 1),
+        formatSrtTime(segment.start) + " --> " + formatSrtTime(end),
+        segment.text
+      ].join("\n");
+    })
+    .join("\n\n");
 }
 
 function findTranscriptPanel() {
@@ -733,7 +785,7 @@ function findTranscriptPanel() {
   ].join(", ")));
 
   return panels.find(panel => panelHasTranscriptText(panel)) ||
-         panels.find(panel => extractTranscriptFromSegments(panel.querySelectorAll(getTranscriptSegmentSelectors().join(", ")))) ||
+         panels.find(panel => extractSegmentsFromHosts(panel.querySelectorAll(getTranscriptSegmentSelectors().join(", "))).length > 0) ||
          panels.find(isVisibleElement) ||
          panels[0] ||
          null;
@@ -752,7 +804,7 @@ function getTranscriptSegmentSelectors() {
 function hasTranscriptReady() {
   const panel = findTranscriptPanel();
   return !!(panel && panelHasTranscriptText(panel)) ||
-         !!extractTranscriptFromSegments(document.querySelectorAll(getTranscriptSegmentSelectors().join(", ")));
+         extractSegmentsFromHosts(document.querySelectorAll(getTranscriptSegmentSelectors().join(", "))).length > 0;
 }
 
 function panelHasTranscriptText(panel) {
@@ -770,6 +822,42 @@ function isTranscriptChromeText(text) {
 
 function getVisibleText(element) {
   return (element.innerText || element.textContent || "").trim();
+}
+
+function getFirstTimestampLine(text) {
+  return (text || '')
+    .split("\n")
+    .map(line => line.trim())
+    .find(isTranscriptTimestampText) || '';
+}
+
+function parseTranscriptTimestamp(text) {
+  const parts = (text || '').trim().split(':').map(Number);
+  if (parts.some(part => Number.isNaN(part))) {
+    return null;
+  }
+
+  if (parts.length === 2) {
+    return parts[0] * 60 + parts[1];
+  }
+
+  if (parts.length === 3) {
+    return parts[0] * 3600 + parts[1] * 60 + parts[2];
+  }
+
+  return null;
+}
+
+function formatSrtTime(seconds) {
+  const milliseconds = Math.max(0, Math.round(seconds * 1000));
+  const hours = Math.floor(milliseconds / 3600000);
+  const minutes = Math.floor((milliseconds % 3600000) / 60000);
+  const wholeSeconds = Math.floor((milliseconds % 60000) / 1000);
+  const ms = milliseconds % 1000;
+
+  return [hours, minutes, wholeSeconds]
+    .map(value => String(value).padStart(2, '0'))
+    .join(':') + ',' + String(ms).padStart(3, '0');
 }
 
 function removeTranscriptTimestampLines(text) {

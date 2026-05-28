@@ -47,7 +47,6 @@ async function testExtensionComplete() {
     if (await settingsButton.isVisible()) {
       console.log('✅ Settings button found!');
       
-      // Open settings panel
       await settingsButton.click();
       await page.waitForTimeout(500);
       
@@ -55,35 +54,16 @@ async function testExtensionComplete() {
       if (await settingsPanel.isVisible()) {
         console.log('✅ Settings panel opens correctly!');
         
-        // Test input field
-        const settingsInput = await settingsPanel.locator('input').first();
-        const testPrepend = 'Please summarize the following video transcript:';
-        await settingsInput.fill(testPrepend);
-        console.log(`✅ Set prepend text: "${testPrepend}"`);
-        
-        // Save settings
-        await settingsPanel.locator('button:has-text("Save")').click();
+        const srtOption = await settingsPanel.locator('input[value="srt"]').first();
+        await srtOption.check();
         await page.waitForTimeout(500);
         
-        // Check if button text changed
-        const buttonText = await captionClipButton.locator('span').textContent();
-        if (buttonText === 'Custom') {
-          console.log('✅ Button text changed to "Custom" after setting prepend text!');
+        const storedFormat = await page.evaluate(() => localStorage.getItem('captionclip-format'));
+        if (storedFormat === 'srt') {
+          console.log('✅ SRT format saved to localStorage correctly!');
         } else {
-          console.log(`❌ Button text did not change. Current text: "${buttonText}"`);
+          console.log(`❌ Format setting not saved correctly. Stored: "${storedFormat}"`);
         }
-        
-        // Verify localStorage
-        const storedValue = await page.evaluate(() => {
-          return localStorage.getItem('captionclip-prepend');
-        });
-        
-        if (storedValue === testPrepend) {
-          console.log('✅ Settings saved to localStorage correctly!');
-        } else {
-          console.log(`❌ Settings not saved correctly. Stored: "${storedValue}"`);
-        }
-        
       } else {
         console.log('❌ Settings panel did not open');
       }
@@ -91,25 +71,22 @@ async function testExtensionComplete() {
       console.log('❌ Settings button not found');
     }
     
-    // Test 3: Test clear functionality
-    console.log('\n🔍 Test 3: Testing clear functionality...');
+    // Test 3: Switch back to TXT format
+    console.log('\n🔍 Test 3: Testing TXT format selection...');
     await settingsButton.click();
     await page.waitForTimeout(500);
     
-    const clearButton = await page.locator('#captionclip-settings-panel button:has-text("Clear")').first();
-    await clearButton.click();
+    const txtOption = await page.locator('#captionclip-settings-panel input[value="txt"]').first();
+    await txtOption.check();
     await page.waitForTimeout(500);
     
-    const clearedValue = await page.evaluate(() => {
-      return localStorage.getItem('captionclip-prepend');
-    });
+    const txtFormat = await page.evaluate(() => localStorage.getItem('captionclip-format'));
+    const buttonTextAfterTxt = await captionClipButton.locator('span').textContent();
     
-    const buttonTextAfterClear = await captionClipButton.locator('span').textContent();
-    
-    if (!clearedValue && buttonTextAfterClear === 'Transcript') {
-      console.log('✅ Clear functionality works correctly!');
+    if (txtFormat === 'txt' && buttonTextAfterTxt === 'Transcript') {
+      console.log('✅ TXT format selection works correctly!');
     } else {
-      console.log(`❌ Clear functionality failed. Stored: "${clearedValue}", Button text: "${buttonTextAfterClear}"`);
+      console.log(`❌ TXT selection failed. Stored: "${txtFormat}", Button text: "${buttonTextAfterTxt}"`);
     }
     
     // Test 4: Test theme detection
@@ -120,31 +97,16 @@ async function testExtensionComplete() {
     
     console.log('✅ Button styles detected (theme-aware styling applied)');
     
-    // Test 5: Set prepend text again for transcript test
-    console.log('\n🔍 Test 5: Setting up for transcript extraction test...');
-    await settingsButton.click();
-    await page.waitForTimeout(500);
-    
-    const settingsInput = await page.locator('#captionclip-settings-panel input').first();
-    await settingsInput.fill('PREPEND TEST:');
-    await page.locator('#captionclip-settings-panel button:has-text("Save")').click();
-    await page.waitForTimeout(500);
-    
-    console.log('✅ Prepend text set for transcript extraction test');
-    
     console.log('\n🎯 All automated tests completed successfully!');
     console.log('\n📋 Test Summary:');
     console.log('✅ Button injection and visibility');
     console.log('✅ Settings button and panel functionality');
-    console.log('✅ Custom prepend text input and saving');
-    console.log('✅ Button text updates ("Custom" vs "Transcript")');
-    console.log('✅ localStorage persistence');
-    console.log('✅ Clear functionality');
+    console.log('✅ TXT/SRT format selection');
+    console.log('✅ Format localStorage persistence');
     console.log('✅ Theme-aware styling');
-    console.log('✅ Prepend text setup for extraction');
     
     console.log('\n🔗 Browser will stay open for manual transcript extraction testing.');
-    console.log('💡 Try clicking the "Custom" button to test transcript extraction with prepend text!');
+    console.log('💡 Try switching between TXT and SRT in settings, then click Transcript.');
     console.log('⌨️  Press Ctrl+C to close when done.');
     
     // Wait indefinitely for manual testing

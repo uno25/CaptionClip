@@ -1,5 +1,14 @@
 # Changelog
 
+## [1.9.0] - 2026-05-28
+
+### Added
+- Added a settings option to save transcripts as TXT or SRT.
+- Added SRT subtitle export with cue timing inferred from YouTube transcript segments.
+
+### Removed
+- Removed the custom prepend text setting and prepend behavior.
+
 ## [1.8.0] - 2026-05-28
 
 ### Added

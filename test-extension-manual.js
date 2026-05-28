@@ -49,20 +49,15 @@ async function testExtension() {
         if (await settingsPanel.isVisible()) {
           console.log('✓ Settings panel opens correctly!');
           
-          // Test input field
-          const settingsInput = await settingsPanel.locator('input').first();
-          await settingsInput.fill('Summarize this video:');
-          
-          // Save settings
-          await settingsPanel.locator('button:has-text("Save")').click();
+          const srtOption = await settingsPanel.locator('input[value="srt"]').first();
+          await srtOption.check();
           await page.waitForTimeout(500);
           
-          // Check if button text changed
-          const buttonText = await captionClipButton.locator('span').textContent();
-          if (buttonText === 'Custom') {
-            console.log('✓ Button text changed to "Custom" after setting prepend text!');
+          const storedFormat = await page.evaluate(() => localStorage.getItem('captionclip-format'));
+          if (storedFormat === 'srt') {
+            console.log('✓ SRT format saved correctly!');
           } else {
-            console.log('✗ Button text did not change. Current text:', buttonText);
+            console.log('✗ Format setting did not change. Current value:', storedFormat);
           }
         } else {
           console.log('✗ Settings panel did not open');
